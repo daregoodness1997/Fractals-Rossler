@@ -1,14 +1,19 @@
 from fractal_rossler.solver import RungeKutta4
+from fractal_rossler.rossler_system import RosslerSystem
 import numpy as np
 
+
+
 class GrahamsmithOrthogonalization:
-    def __init__(self, initial_conditions, a, b, c, t_max, dt):
+    def __init__(self,func, initial_conditions, a, b, c, t_max, dt):
         self.initial_conditions = initial_conditions
         self.a = a
         self.b = b
         self.c = c
         self.t_max = t_max
         self.dt = dt
+        self.func = func
+
 
     def grahamsmith_orthogonalization(self):
         num_vars = len(self.initial_conditions)
@@ -25,23 +30,30 @@ class GrahamsmithOrthogonalization:
         # Time integration using RK4 solver
         for i in range(1, num_steps):
             # Define the system function (assuming it's defined elsewhere)
-            def system(t, y):
-                return [self.a * (y[1] - y[2]),
-                        self.b * (y[2] + y[0]),
-                        self.c * (y[1] - y[0])]
+            rossler = RosslerSystem.system
+
 
             # RK4 integration
-            rk4_solver = RungeKutta4(system, self.initial_conditions, 0, self.t_max, self.dt)
+            rk4_solver = RungeKutta4(rossler, self.initial_conditions, 0, self.t_max, self.dt)
             states[i] = rk4_solver.solve()[1][i]
 
-            # Update orthogonalization matrices
-            A = np.dot(A, states[i] - states[i-1])
-            Q, R = np.linalg.qr(A)  # QR decomposition
+            # Accumulate state differences
+            diff_matrix = np.zeros((num_steps - 1, num_vars))
+            for i in range(1, num_steps):
+                diff_matrix[i-1] = states[i] - states[i-1]
 
-        # Compute Lyapunov exponents
-        lyapunov_exponents = np.log(np.abs(np.diag(R)))
+            # Perform QR decomposition on the accumulated differences
+            Q, R = np.linalg.qr(diff_matrix.T)
 
-        # Estimate Lyapunov dimension
-        lyapunov_dimension = np.sum(lyapunov_exponents > 0)
-
+            # Compute Lyapunov exponents
+            lyapunov_exponents = np.log(np.abs(np.diag(R)))
+            
+            # Check for division by zero
+            safe_divisor = self.dt * (num_steps - 1) + 1e-10  # Add a small epsilon
+            
+            lyapunov_exponents /= safe_divisor
+            
+            # Estimate Lyapunov dimension
+            lyapunov_dimension = np.sum(lyapunov_exponents > 0)
+            
         return lyapunov_exponents, lyapunov_dimension
