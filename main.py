@@ -7,8 +7,8 @@ from mpl_toolkits.mplot3d import Axes3D
 # Initial conditions for (x, y, z)
 initial_conditions = [1, 1, 1]
 t0 = 0
-tf = 100
-dt = 0.0001
+tf = 1000
+dt = 0.001
 a = 0.2
 b = 0.2
 c = 5.7
@@ -41,6 +41,8 @@ for i in range(len(t_values)):
 
 # Create a figure with four subplots
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 20))
+
+current_size=0.2
 
 # Plot individual state variables
 ax1.plot(t_values, y_values[:, 0], label='x(t)')
