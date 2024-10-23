@@ -1,59 +1,67 @@
-from fractal_rossler.solver import RungeKutta4
-from fractal_rossler.rossler_system import RosslerSystem
 import numpy as np
 
-
-
-class GrahamsmithOrthogonalization:
-    def __init__(self,func, initial_conditions, a, b, c, t_max, dt):
-        self.initial_conditions = initial_conditions
-        self.a = a
-        self.b = b
-        self.c = c
-        self.t_max = t_max
-        self.dt = dt
-        self.func = func
-
-
-    def grahamsmith_orthogonalization(self):
-        num_vars = len(self.initial_conditions)
-        num_steps = int(self.t_max / self.dt)
-        states = np.zeros((num_steps, num_vars))
-        states[0] = self.initial_conditions
-        t_values = np.linspace(0, self.t_max, num_steps)
+class GrahamSmithOrthogonalization:
+    def __init__(self, vectors):
+        """
+        Initialize the class with a list of vectors.
         
-        # Setup identity matrices
-        A = np.eye(num_vars)
-        Q = np.eye(num_vars)
-        R = np.zeros((num_vars, num_vars))
+        :param vectors: A list of numpy arrays representing the vectors.
+        """
+        self.vectors = np.array(vectors)
+        self.orthogonal_vectors = None
+        self.orthonormal_vectors = None
 
-        # Time integration using RK4 solver
-        for i in range(1, num_steps):
-            # Define the system function (assuming it's defined elsewhere)
-            rossler = RosslerSystem.system
+    def orthogonalize(self):
+        """
+        Perform the Gram-Schmidt process to orthogonalize the input vectors.
+        
+        :return: A numpy array of orthogonal vectors.
+        """
+        num_vectors = self.vectors.shape[0]
+        orthogonal_vectors = np.zeros_like(self.vectors)
 
-
-            # RK4 integration
-            rk4_solver = RungeKutta4(rossler, self.initial_conditions, 0, self.t_max, self.dt)
-            states[i] = rk4_solver.solve()[1][i]
-
-            # Accumulate state differences
-            diff_matrix = np.zeros((num_steps - 1, num_vars))
-            for i in range(1, num_steps):
-                diff_matrix[i-1] = states[i] - states[i-1]
-
-            # Perform QR decomposition on the accumulated differences
-            Q, R = np.linalg.qr(diff_matrix.T)
-
-            # Compute Lyapunov exponents
-            lyapunov_exponents = np.log(np.abs(np.diag(R)))
+        for i in range(num_vectors):
+            v_i = self.vectors[i]
+            # Start with the original vector
+            orthogonal_vectors[i] = v_i
             
-            # Check for division by zero
-            safe_divisor = self.dt * (num_steps - 1) + 1e-10  # Add a small epsilon
-            
-            lyapunov_exponents /= safe_divisor
-            
-            # Estimate Lyapunov dimension
-            lyapunov_dimension = np.sum(lyapunov_exponents > 0)
-            
-        return lyapunov_exponents, lyapunov_dimension
+            # Subtract the projection of v_i onto all previously computed orthogonal vectors
+            for j in range(i):
+                proj = np.dot(v_i, orthogonal_vectors[j]) / np.dot(orthogonal_vectors[j], orthogonal_vectors[j]) * orthogonal_vectors[j]
+                orthogonal_vectors[i] -= proj
+
+        self.orthogonal_vectors = orthogonal_vectors
+        return self.orthogonal_vectors
+
+    def normalize(self):
+        """
+        Normalize the orthogonal vectors to create an orthonormal set.
+        
+        :return: A numpy array of orthonormal vectors.
+        """
+        if self.orthogonal_vectors is None:
+            raise ValueError("You must first call the 'orthogonalize' method before normalizing.")
+        
+        num_vectors = self.orthogonal_vectors.shape[0]
+        orthonormal_vectors = np.zeros_like(self.orthogonal_vectors)
+
+        for i in range(num_vectors):
+            norm = np.linalg.norm(self.orthogonal_vectors[i])
+            if norm == 0:
+                raise ValueError("Cannot normalize a zero vector.")
+            orthonormal_vectors[i] = self.orthogonal_vectors[i] / norm
+
+        self.orthonormal_vectors = orthonormal_vectors
+        return self.orthonormal_vectors
+
+    def get_orthogonal(self):
+        """Return the orthogonal vectors."""
+        if self.orthogonal_vectors is None:
+            raise ValueError("Orthogonalization has not been performed yet.")
+        return self.orthogonal_vectors
+
+    def get_orthonormal(self):
+        """Return the orthonormal vectors."""
+        if self.orthonormal_vectors is None:
+            raise ValueError("Normalization has not been performed yet.")
+        return self.orthonormal_vectors
