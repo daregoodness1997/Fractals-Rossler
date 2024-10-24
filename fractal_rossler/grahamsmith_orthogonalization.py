@@ -24,6 +24,7 @@ class GrahamSmithOrthogonalization:
             v_i = self.vectors[i]
             # Start with the original vector
             orthogonal_vectors[i] = v_i
+            print(orthogonal_vectors[i])
             
             # Subtract the projection of v_i onto all previously computed orthogonal vectors
             for j in range(i):
